@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เว็บสุ่มรายชื่อและตัวเลข (Minimal Randomizer)</title>
+    <!-- นำเข้า Google Font (Prompt) และไลบรารี Confetti -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --border-color: #e2e8f0;
+            --radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+            color: var(--text-main);
+        }
+
+        /* Tab Menu */
+        .tabs {
+            display: flex;
+            background: var(--bg-color);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: #ffffff;
+            color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Panel Sections */
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        textarea, input[type="number"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+            background: #fff;
+            color: var(--text-main);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        textarea:focus, input[type="number"]:focus {
+            border-color: var(--primary);
+        }
+
+        .range-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .range-group span {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Action Button */
+        .btn-random {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 8px;
+        }
+
+        .btn-random:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-random:active {
+            transform: scale(0.98);
+        }
+
+        /* Result Display Area */
+        .result-container {
+            margin-top: 24px;
+            padding: 20px;
+            background: var(--bg-color);
+            border-radius: 12px;
+            text-align: center;
+            border: 1px dashed var(--border-color);
+        }
+
+        .result-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--primary);
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Animation for rolling text */
+        @keyframes pulse-scale {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animate-result {
+            animation: pulse-scale 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>ระบบสุ่มข้อมูล</h1>
+        
+        <!-- Tab Menu -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('name')">สุ่มรายชื่อ</button>
+            <button class="tab-btn" onclick="switchTab('number')">สุ่มตัวเลข</button>
+        </div>
+
+        <!-- Panel: สุ่มรายชื่อ -->
+        <div id="name-panel" class="panel active">
+            <div class="form-group">
+                <label for="name-input">ใส่รายชื่อ (บรรทัดละ 1 ชื่อ)</label>
+                <textarea id="name-input" placeholder="สมชาย&#10;สมหญิง&#10;มานี&#10;มานะ"></textarea>
+            </div>
+            <button class="btn-random" onclick="randomName()">สุ่มรายชื่อ</button>
+        </div>
+
+        <!-- Panel: สุ่มตัวเลข -->
+        <div id="number-panel" class="panel">
+            <div class="form-group">
+                <label>ช่วงตัวเลข</label>
+                <div class="range-group">
+                    <input type="number" id="min-num" value="1" placeholder="ค่าเริ่มต้น">
+                    <span>ถึง</span>
+                    <input type="number" id="max-num" value="100" placeholder="ค่าสิ้นสุด">
+                </div>
+            </div>
+            <button class="btn-random" onclick="randomNum()">สุ่มตัวเลข</button>
+        </div>
+
+        <!-- พื้นที่แสดงผลลัพธ์ -->
+        <div class="result-container">
+            <div class="result-label">ผลการสุ่ม</div>
+            <div id="result-display" class="result-value">-</div>
+        </div>
+    </div>
+
+    <script>
+        // ฟังก์ชันสลับแท็บ
+        function switchTab(type) {
+            const nameTab = document.querySelectorAll('.tab-btn')[0];
+            const numTab = document.querySelectorAll('.tab-btn')[1];
+            const namePanel = document.getElementById('name-panel');
+            const numPanel = document.getElementById('number-panel');
+            const resultDisplay = document.getElementById('result-display');
+
+            resultDisplay.textContent = '-';
+            resultDisplay.classList.remove('animate-result');
+
+            if (type === 'name') {
+                nameTab.classList.add('active');
+                numTab.classList.remove('active');
+                namePanel.classList.add('active');
+                numPanel.classList.remove('active');
+            } else {
+                numTab.classList.add('active');
+                nameTab.classList.remove('active');
+                numPanel.classList.add('active');
+                namePanel.classList.remove('active');
+            }
+        }
+
+        // ฟังก์ชันยิงพลุกระดาษ (Confetti)
+        function triggerConfetti() {
+            confetti({
+                particleCount: 80,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
+        // เอฟเฟกต์ตัวเลขวิ่งสุ่มก่อนหยุด
+        function rollEffect(callback) {
+            const resultDisplay = document.getElementById('result-display');
+            let counter = 0;
+            const maxCount = 10;
+            
+            const interval = setInterval(() => {
+                counter++;
+                if (counter < maxCount) {
+                    resultDisplay.textContent = Math.floor(Math.random() * 90) + 10;
+                } else {
+                    clearInterval(interval);
+                    callback();
+                    resultDisplay.classList.add('animate-result');
+                    setTimeout(() => resultDisplay.classList.remove('animate-result'), 300);
+                    triggerConfetti();
+                }
+            }, 50);
+        }
+
+        // สุ่มรายชื่อ
+        function randomName() {
+            const input = document.getElementById('name-input').value;
+            const names = input.split('\n').map(name => name.trim()).filter(name => name !== '');
+            const resultDisplay = document.getElementById('result-display');
+
+            if (names.length === 0) {
+                alert('กรุณาใส่รายชื่ออย่างน้อย 1 รายชื่อ');
+                return;
+            }
+
+            // เอฟเฟกต์สลับชื่อหลอกๆ ก่อนแสดงผลจริง
+            let count = 0;
+            const interval = setInterval(() => {
+                const randomTemp = names[Math.floor(Math.random() * names.length)];
+                resultDisplay.textContent = randomTemp;
+                count++;
+                if (count > 10) {
+                    clearInterval(interval);
+                    const finalWinner = names[Math.floor(Math.random() * names.length)];
+                    resultDisplay.textContent = finalWinner;
+                    resultDisplay.classList.add('animate-result');
+                    setTimeout(() => resultDisplay.classList.remove('animate-result'), 300);
+                    triggerConfetti();
+                }
+            }, 50);
+        }
+
+        // สุ่มตัวเลข
+        function randomNum() {
+            const min = parseInt(document.getElementById('min-num').value);
+            const max = parseInt(document.getElementById('max-num').value);
+            const resultDisplay = document.getElementById('result-display');
+
+            if (isNaN(min) || isNaN(max)) {
+                alert('กรุณากรอกตัวเลขช่วงเริ่มต้นและสิ้นสุดให้ถูกต้อง');
+                return;
+            }
+
+            if (min > max) {
+                alert('ค่าเริ่มต้นต้องน้อยกว่าหรือเท่ากับค่าสิ้นสุด');
+                return;
+            }
+
+            // เอฟเฟกต์ตัวเลขวิ่ง
+            let count = 0;
+            const interval = setInterval(() => {
+                const tempNum = Math.floor(Math.random() * (max - min + 1)) + min;
+                resultDisplay.textContent = tempNum;
+                count++;
+                if (count > 10) {
+                    clearInterval(interval);
+                    const finalNum = Math.floor(Math.random() * (max - min + 1)) + min;
+                    resultDisplay.textContent = finalNum;
+                    resultDisplay.classList.add('animate-result');
+                    setTimeout(() => resultDisplay.classList.remove('animate-result'), 300);
+                    triggerConfetti();
+                }
+            }, 50);
+        }
+    </script>
+</body>
+</html>
